@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Service Logg - Fixed Focus</title>
+<title>Service Logg - Optimized Engine</title>
 
 <style>
 body{font-family:system-ui;background:#f5f5f5;padding:16px;}
@@ -23,15 +23,17 @@ input{padding:6px;border:1px solid #ccc;border-radius:4px;}
 .table th{background:#f57c00;color:#fff;}
 .rowlabel{text-align:left;background:#fafafa;}
 
+.cell{cursor:pointer;user-select:none;}
+.cell.checked{background:#c8e6c9;font-weight:bold;}
+
 .danger{background:red;}
-.ok{background:#4caf50;}
 .small{padding:4px 6px;font-size:12px;}
 
 </style>
 </head>
 <body>
 
-<h2>Service Logg (Fixed Focus)</h2>
+<h2>Service Logg (Optimized)</h2>
 
 <div class="vehicle" id="vehicleBar"></div>
 <button onclick="addVehicle()">➕ Ny bil</button>
@@ -68,7 +70,6 @@ if(!state){
   };
 }
 
-// SAVE (NO RENDER HERE)
 function save(){
   localStorage.setItem('service_state',JSON.stringify(state));
 }
@@ -79,37 +80,29 @@ function v(){return state.vehicles[state.activeVehicle];}
 function addVehicle(){
   state.vehicles.push({name:"Ny bil",headers:["100","200"],sections:[]});
   state.activeVehicle=state.vehicles.length-1;
-  save();
-  render();
-}
-
-function setVehicle(i){state.activeVehicle=i;save();render();}
-
-function renameVehicle(i,val){state.vehicles[i].name=val;save();}
-
-function deleteVehicle(i){
-  state.vehicles.splice(i,1);
-  if(state.activeVehicle>=state.vehicles.length)state.activeVehicle=0;
   save();render();
 }
 
-// HEADERS (NO LIVE RERENDER)
+function setVehicle(i){state.activeVehicle=i;save();render();}
+function renameVehicle(i,val){state.vehicles[i].name=val;save();}
+function deleteVehicle(i){state.vehicles.splice(i,1);if(state.activeVehicle>=state.vehicles.length)state.activeVehicle=0;save();render();}
+
+// HEADERS
 function addHeader(){
-  v().headers.push("ny");
-  v().sections.forEach(s=>s.rows.forEach(r=>r.values.push("")));
+  const veh=v();
+  veh.headers.push("ny");
+  veh.sections.forEach(s=>s.rows.forEach(r=>r.values.push("")));
   save();render();
 }
 
 function removeHeader(){
-  v().headers.pop();
-  v().sections.forEach(s=>s.rows.forEach(r=>r.values.pop()));
+  const veh=v();
+  veh.headers.pop();
+  veh.sections.forEach(s=>s.rows.forEach(r=>r.values.pop()));
   save();render();
 }
 
-function updateHeader(i,val){
-  v().headers[i]=val;
-  save();
-}
+function updateHeader(i,val){v().headers[i]=val;save();}
 
 // SECTIONS
 function addSection(){v().sections.push({name:"Ny seksjon",rows:[]});save();render();}
@@ -121,18 +114,21 @@ function addRow(s){v().sections[s].rows.push({label:"Ny rad",values:Array(v().he
 function deleteRow(s,r){v().sections[s].rows.splice(r,1);save();render();}
 function renameRow(s,r,val){v().sections[s].rows[r].label=val;save();}
 
-// CELLS (NO RERENDER)
-function toggleCell(s,r,c){
-  let cell=v().sections[s].rows[r].values[c];
-  v().sections[s].rows[r].values[c]=cell==="✔"?"":"✔";
+// CELL TOGGLE (NO FULL RENDER)
+function toggleCell(s,r,c,el){
+  const cell=v().sections[s].rows[r].values[c];
+  const newVal=cell==="✔"?"":"✔";
+  v().sections[s].rows[r].values[c]=newVal;
   save();
+
+  el.classList.toggle('checked',newVal==="✔");
+  el.textContent=newVal;
 }
 
-// RENDER
+// RENDER VEHICLES
 function renderVehicles(){
   const bar=document.getElementById('vehicleBar');
   bar.innerHTML="";
-
   state.vehicles.forEach((x,i)=>{
     bar.innerHTML+=`
       <button class="${i===state.activeVehicle?'active':''}" onclick="setVehicle(${i})">${x.name}</button>
@@ -183,7 +179,12 @@ function render(){
           <input value="${r.label}" onchange="renameRow(${si},${ri},this.value)">
           <button class="danger small" onclick="deleteRow(${si},${ri})">X</button>
         </td>
-        ${r.values.map((c,ci)=>`<td onclick="toggleCell(${si},${ri},${ci})">${c}</td>`).join('')}
+        ${r.values.map((c,ci)=>`
+          <td class="cell ${c==='✔'?'checked':''}" 
+              onclick="toggleCell(${si},${ri},${ci},this)">
+            ${c}
+          </td>
+        `).join('')}
       `;
 
       table.appendChild(tr);
@@ -196,3 +197,4 @@ render();
 </script>
 </body>
 </html>
+
