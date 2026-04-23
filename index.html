@@ -8,234 +8,176 @@
 <style>
 body { font-family: system-ui; background:#f5f5f5; padding:16px; }
 
-.tab-buttons { display:flex; gap:8px; margin-bottom:10px; }
-button { padding:10px; border:none; background:black; color:white; }
+h2 { margin-bottom:10px; }
 
-.hidden { display:none; }
-
-table { border-collapse: collapse; width:100%; background:white; }
-th, td { border:1px solid #ccc; padding:6px; text-align:center; }
-
-th { background:#f57c00; color:white; }
-
-.section { background:#1e88e5; color:white; }
-.sub { background:#eee; text-align:left; }
-
-.yellow { background:#fff176; text-align:left; }
-.bluecell { background:#4dd0e1; }
-
-input.inline {
-  width:100%;
+button {
+  padding:10px;
   border:none;
-  background:transparent;
-  font-weight:bold;
+  background:black;
   color:white;
+  margin:4px;
+  cursor:pointer;
 }
 
-select.inline {
-  width:100%;
-  border:none;
-  background:transparent;
-  color:white;
-  font-weight:bold;
+input {
+  padding:6px;
+  border:1px solid #ccc;
+  border-radius:4px;
 }
-textarea { width:100%; height:120px; }
+
+.section {
+  background:#1e88e5;
+  color:white;
+  padding:10px;
+  margin-top:12px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  border-radius:4px;
+}
+
+.section input {
+  font-weight:bold;
+  background:transparent;
+  border:none;
+  color:white;
+  font-size:16px;
+  width:60%;
+}
+
+.container {
+  margin-top:6px;
+  margin-bottom:10px;
+}
+
+.row {
+  display:flex;
+  gap:8px;
+  background:white;
+  padding:8px;
+  border:1px solid #ddd;
+  border-radius:4px;
+  align-items:center;
+  margin-bottom:6px;
+}
+
+.row input {
+  flex:1;
+  border:1px solid #ddd;
+  padding:6px;
+}
+
+.delete {
+  background:red;
+}
+
+.add-row {
+  background:#4caf50;
+}
+
+.top-bar {
+  margin-bottom:10px;
+}
 </style>
 </head>
 
 <body>
 
-<div class="tab-buttons">
-  <button onclick="showTab('tableTab')">📋 Service</button>
-  <button onclick="showTab('settingsTab')">⚙️ Datavalg</button>
+<h2>Service Logg</h2>
+
+<div class="top-bar">
+  <button onclick="addSection()">➕ Ny seksjon</button>
 </div>
 
-<div id="tableTab"></div>
-
-<div id="settingsTab" class="hidden">
-  <h3>Seksjoner (blå linjer dropdown)</h3>
-  <textarea id="sectionList"></textarea>
-
-  <h3>Utført av dropdown</h3>
-  <textarea id="utførtListe"></textarea>
-
-  <button onclick="saveSettings()">Lagre datavalg</button>
-
-  <hr>
-
-  <h3>Legg til ny seksjon</h3>
-  <button onclick="addSection()">➕ Ny blå linje</button>
-
-  <h3>Legg til rad</h3>
-  <input id="newRowName" placeholder="Navn på rad">
-  <button onclick="addRow()">➕ Legg til rad</button>
-</div>
+<div id="app"></div>
 
 <script>
-let data = JSON.parse(localStorage.getItem('service_data') || 'null');
-let settings = JSON.parse(localStorage.getItem('service_settings') || 'null');
-
-if(!settings){
-  settings = {
-    sections:["Motor","Smøring","Kontroll","Kommentar"],
-    utfort:["Magnar","Verksted","Selv"]
-  };
-}
+let data = JSON.parse(localStorage.getItem('service_v3') || 'null');
 
 if(!data){
   data = {
-    headers:["53,1","110","172"],
-    rows:[
-      {type:"section", label:"Motor"},
-      {label:"Olje/Olje-filter", values:["✔","✔","✔"]},
-      {label:"Luft-filter", values:["✔","✔","✔"]},
-
-      {type:"section", label:"Kommentar"},
-      {label:"Kommentar", values:["","",""], comment:true},
-
-      {type:"section", label:"Utført av"},
-      {label:"Utført av", values:["","",""], dropdown:true}
+    sections:[
+      {name:"Motor", rows:["Olje","Olje-filter"]},
+      {name:"Kontroll", rows:["Luft-filter"]},
+      {name:"Kommentar", rows:[""]}
     ]
   };
 }
 
-function showTab(tab){
-  document.getElementById('tableTab').classList.add('hidden');
-  document.getElementById('settingsTab').classList.add('hidden');
-  document.getElementById(tab).classList.remove('hidden');
-}
-
-function render(){
-  const el = document.getElementById('tableTab');
-  el.innerHTML = '';
-
-  let html = '<table>';
-
-  // header
-  html += '<tr><th>Timer</th>';
-  data.headers.forEach((h,i)=>{
-    html += `<th contenteditable oninput="updateHeader(${i},this.innerText)">${h}</th>`;
-  });
-  html += '</tr>';
-
-  data.rows.forEach((row,r)=>{
-
-    // 🔵 SECTION MED DROPDOWN
-    if(row.type==="section"){
-      html += `<tr>
-        <td colspan="${data.headers.length+1}" class="section">
-          <select class="inline" onchange="updateSection(${r},this.value)">
-            ${settings.sections.map(s=>`
-              <option ${row.label===s?'selected':''}>${s}</option>
-            `).join('')}
-          </select>
-        </td>
-      </tr>`;
-      return;
-    }
-
-    html += `<tr><td class="sub">
-      <input value="${row.label}" 
-      oninput="updateLabel(${r},this.value)">
-    </td>`;
-
-    row.values.forEach((val,c)=>{
-
-      if(row.comment){
-        html += `<td class="yellow" contenteditable
-          oninput="updateCell(${r},${c},this.innerText)">${val}</td>`;
-      }
-
-      else if(row.dropdown){
-        html += `<td class="bluecell">
-          <select onchange="updateCell(${r},${c},this.value)">
-            <option value="">Velg</option>
-            ${settings.utfort.map(v=>`
-              <option ${val===v?'selected':''}>${v}</option>
-            `).join('')}
-          </select>
-        </td>`;
-      }
-
-      else{
-        html += `<td onclick="toggle(${r},${c})">${val==="✔"?"✔":""}</td>`;
-      }
-
-    });
-
-    html += '</tr>';
-  });
-
-  html += '</table>';
-  el.innerHTML = html;
-
-  localStorage.setItem('service_data', JSON.stringify(data));
-}
-
-function toggle(r,c){
-  data.rows[r].values[c] = data.rows[r].values[c]==="✔"?"":"✔";
-  render();
-}
-
-function updateCell(r,c,val){
-  data.rows[r].values[c]=val;
-  save();
-}
-
-function updateLabel(r,val){
-  data.rows[r].label=val;
-  save();
-}
-
-function updateSection(r,val){
-  data.rows[r].label=val;
-  save();
-}
-
-function updateHeader(i,val){
-  data.headers[i]=val;
-  save();
-}
-
 function save(){
-  localStorage.setItem('service_data', JSON.stringify(data));
+  localStorage.setItem('service_v3', JSON.stringify(data));
+  render();
 }
 
 function addSection(){
-  data.rows.push({type:"section", label:settings.sections[0]});
-  render();
+  data.sections.push({name:"Ny seksjon", rows:[]});
+  save();
 }
 
-function addRow(){
-  const name = document.getElementById('newRowName').value;
-  if(!name) return;
+function deleteSection(i){
+  data.sections.splice(i,1);
+  save();
+}
 
-  data.rows.push({
-    label:name,
-    values:Array(data.headers.length).fill("")
+function addRow(s){
+  data.sections[s].rows.push("Ny rad");
+  save();
+}
+
+function deleteRow(s,r){
+  data.sections[s].rows.splice(r,1);
+  save();
+}
+
+function updateSectionName(i,val){
+  data.sections[i].name = val;
+  save();
+}
+
+function updateRow(s,r,val){
+  data.sections[s].rows[r] = val;
+  save();
+}
+
+function render(){
+  const app = document.getElementById('app');
+  app.innerHTML = '';
+
+  data.sections.forEach((sec,sIndex)=>{
+
+    const wrapper = document.createElement('div');
+
+    wrapper.innerHTML = `
+      <div class="section">
+        <input value="${sec.name}" onchange="updateSectionName(${sIndex},this.value)">
+        <div>
+          <button onclick="addRow(${sIndex})">+ rad</button>
+          <button class="delete" onclick="deleteSection(${sIndex})">Slett</button>
+        </div>
+      </div>
+
+      <div class="container" id="sec-${sIndex}"></div>
+    `;
+
+    app.appendChild(wrapper);
+
+    const container = document.getElementById(`sec-${sIndex}`);
+
+    sec.rows.forEach((row,rIndex)=>{
+      const rowDiv = document.createElement('div');
+      rowDiv.className = 'row';
+
+      rowDiv.innerHTML = `
+        <input value="${row}" onchange="updateRow(${sIndex},${rIndex},this.value)">
+        <button class="delete" onclick="deleteRow(${sIndex},${rIndex})">X</button>
+      `;
+
+      container.appendChild(rowDiv);
+    });
   });
-
-  render();
 }
 
-function saveSettings(){
-  settings.sections = document.getElementById('sectionList').value
-    .split('\n').map(v=>v.trim()).filter(Boolean);
-
-  settings.utfort = document.getElementById('utførtListe').value
-    .split('\n').map(v=>v.trim()).filter(Boolean);
-
-  localStorage.setItem('service_settings', JSON.stringify(settings));
-  render();
-}
-
-function init(){
-  document.getElementById('sectionList').value = settings.sections.join('\n');
-  document.getElementById('utførtListe').value = settings.utfort.join('\n');
-  render();
-}
-
-init();
+render();
 </script>
 
 </body>
