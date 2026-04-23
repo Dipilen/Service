@@ -3,25 +3,57 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Service Logg - Optimized</title>
+<title>Service Logg - Final Stable Version</title>
 
 <style>
 body{font-family:system-ui;background:#f5f5f5;padding:16px;}
 button{padding:8px;border:none;background:#111;color:#fff;margin:4px;cursor:pointer;border-radius:4px;}
 input{padding:6px;border:1px solid #ccc;border-radius:4px;}
-textarea{width:100%;min-height:60px;resize:vertical;}
+textarea{font-family:inherit;}
 
-.vehicle{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;align-items:center;}
-.vehicle button.active{background:#1e88e5;}
+.vehicleBar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:10px;}
+.vehicleBar button.active{background:#1e88e5;}
 
 .topbar{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
 
-.section{background:#1e88e5;color:#fff;padding:10px;margin-top:14px;display:flex;justify-content:space-between;align-items:center;border-radius:4px;}
-.section input{background:transparent;border:none;color:#fff;font-weight:bold;font-size:16px;width:50%;}
+.section{
+  background:#1e88e5;
+  color:#fff;
+  padding:10px;
+  margin-top:14px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  border-radius:4px;
+}
+.section input{
+  background:transparent;
+  border:none;
+  color:#fff;
+  font-weight:bold;
+  font-size:16px;
+  width:55%;
+}
 
-.table{width:100%;border-collapse:collapse;margin-top:6px;background:#fff;font-size:0.85em;}
-.table th,.table td{border:1px solid #ddd;padding:4px;text-align:center;vertical-align:top;}
-.table th{background:#f57c00;color:#fff;}
+.table{
+  width:100%;
+  border-collapse:collapse;
+  margin-top:6px;
+  background:#fff;
+  font-size:0.85em;
+}
+
+.table th,.table td{
+  border:1px solid #ddd;
+  padding:4px;
+  text-align:center;
+  vertical-align:top;
+}
+
+.table th{
+  background:#f57c00;
+  color:#fff;
+}
 
 .rowlabel{
   display:flex;
@@ -31,26 +63,46 @@ textarea{width:100%;min-height:60px;resize:vertical;}
   background:#fafafa;
   text-align:left;
 }
-.rowlabel input{
-  flex:1;
+
+.cell{
+  cursor:pointer;
+  user-select:none;
 }
 
-.cell{cursor:pointer;user-select:none;}
-.cell.checked{background:#c8e6c9;font-weight:bold;}
+.cell.checked{
+  background:#c8e6c9;
+  font-weight:bold;
+}
+
+.noteCell{
+  background:#fffde7;
+}
+
+.noteInput{
+  width:100%;
+  min-height:50px;
+  border:none;
+  background:#fffde7;
+  resize:vertical;
+}
+
+.noteInput:focus{
+  min-height:140px;
+  outline:2px solid #f57c00;
+}
 
 .danger{background:red;}
 .small{padding:4px 6px;font-size:12px;}
-.noteCell{background:#fffde7;}
 
 </style>
 </head>
 <body>
 
-<h2>Service Logg (Optimized)</h2>
+<h2>Service Logg</h2>
 
 <button onclick="addVehicle()">➕ Kjøretøy</button>
 
-<div class="vehicle" id="vehicleBar"></div>
+<div class="vehicleBar" id="vehicleBar"></div>
 
 <div class="topbar">
 <button onclick="addHeader()">+ KM/timer</button>
@@ -62,7 +114,7 @@ textarea{width:100%;min-height:60px;resize:vertical;}
 
 <script>
 
-let state = JSON.parse(localStorage.getItem('service_state')||'null');
+let state=JSON.parse(localStorage.getItem('service_state')||'null');
 
 if(!state){
   state={
@@ -75,8 +127,8 @@ if(!state){
           {
             name:"Motor",
             rows:[
-              {label:"Olje",values:["✔","","✔"]},
-              {label:"Annet",values:["","",""],note:true}
+              {type:"check",label:"Olje",values:["✔","","✔"]},
+              {type:"note",label:"Annet",values:["","",""]}
             ]
           }
         ]
@@ -121,7 +173,9 @@ function updateHeader(i,val){v().headers[i]=val;save();}
 
 // SECTIONS
 function addSection(){
-  v().sections.push({name:"Ny seksjon",rows:[{label:"Annet",values:Array(v().headers.length).fill(""),note:true}]});
+  v().sections.push({
+    name:"Ny seksjon",
+    rows:[{type:"note",label:"Annet",values:Array(v().headers.length).fill("")}]});
   save();render();
 }
 
@@ -131,7 +185,7 @@ function renameSection(i,val){v().sections[i].name=val;save();}
 // ROWS
 function addRow(s){
   const sec=v().sections[s];
-  sec.rows.splice(sec.rows.length-1,0,{label:"Ny rad",values:Array(v().headers.length).fill("")});
+  sec.rows.splice(sec.rows.length-1,0,{type:"check",label:"Ny rad",values:Array(v().headers.length).fill("")});
   save();render();
 }
 
@@ -141,8 +195,7 @@ function renameRow(s,r,val){v().sections[s].rows[r].label=val;save();}
 // CELLS
 function toggleCell(s,r,c,el){
   const row=v().sections[s].rows[r];
-  const val=row.values[c];
-  const nv=val==="✔"?"":"✔";
+  const nv=row.values[c]==="✔"?"":"✔";
   row.values[c]=nv;
   save();
   el.classList.toggle('checked',nv==="✔");
@@ -155,6 +208,7 @@ function updateNote(s,r,c,val){v().sections[s].rows[r].values[c]=val;save();}
 function renderVehicles(){
   const bar=document.getElementById('vehicleBar');
   bar.innerHTML="";
+
   state.vehicles.forEach((x,i)=>{
     bar.innerHTML+=`
       <button class="${i===state.activeVehicle?'active':''}" onclick="setVehicle(${i})">${x.name}</button>
@@ -200,19 +254,27 @@ function render(){
     sec.rows.forEach((r,ri)=>{
       const tr=document.createElement('tr');
 
+      const cells = r.type==='note'
+        ? r.values.map((c,ci)=>
+            `<td class="noteCell">
+              <textarea class="noteInput" oninput="updateNote(${si},${ri},${ci},this.value)" onfocus="this.style.minHeight='140px'" onblur="this.style.minHeight='50px'">${c||''}</textarea>
+            </td>`
+          ).join('')
+        : r.values.map((c,ci)=>
+            `<td class="cell ${c==='✔'?'checked':''}" onclick="toggleCell(${si},${ri},${ci},this)">${c}</td>`
+          ).join('');
+
       tr.innerHTML=`
         <td class="rowlabel">
           <input value="${r.label}" onchange="renameRow(${si},${ri},this.value)">
-          <button class="danger small" onclick="deleteRow(${si},${ri})">X</button>
+          ${r.type!=='note'?`<button class="danger small" onclick="deleteRow(${si},${ri})">X</button>`:''}
         </td>
-        ${r.values.map((c,ci)=> isNaN(c)
-          ? `<td class="cell ${c==='✔'?'checked':''}" onclick="toggleCell(${si},${ri},${ci},this)">${c}</td>`
-          : `<td class="noteCell"><textarea oninput="updateNote(${si},${ri},${ci},this.value)">${c||''}</textarea></td>`
-        ).join('')}
+        ${cells}
       `;
 
       table.appendChild(tr);
     });
+
   });
 }
 
