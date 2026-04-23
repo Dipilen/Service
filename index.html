@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Service Logg</title>
+<title>Service Logg - Multi Vehicle</title>
 
 <style>
 body { font-family: system-ui; background:#f5f5f5; padding:16px; }
@@ -25,6 +25,21 @@ input {
   border-radius:4px;
 }
 
+.vehicle-bar {
+  margin-bottom:10px;
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+}
+
+.vehicle-bar button {
+  background:#333;
+}
+
+.vehicle-bar button.active {
+  background:#1e88e5;
+}
+
 .section {
   background:#1e88e5;
   color:white;
@@ -42,7 +57,7 @@ input {
   border:none;
   color:white;
   font-size:16px;
-  width:60%;
+  width:50%;
 }
 
 .table {
@@ -85,35 +100,42 @@ input {
   margin-bottom:18px;
 }
 
+.smallbtn {
+  padding:4px 6px;
+  font-size:12px;
+}
+
 </style>
 </head>
 
 <body>
 
-<h2>Service Logg (Hybrid)</h2>
+<h2>Service Logg (Multi Vehicle)</h2>
 
-<button onclick="addSection()">➕ Ny seksjon</button>
+<div class="vehicle-bar" id="vehicleBar"></div>
+
+<button onclick="addVehicle()">➕ Ny bil</button>
 
 <div id="app"></div>
 
 <script>
-let data = JSON.parse(localStorage.getItem('service_hybrid') || 'null');
+let data = JSON.parse(localStorage.getItem('service_multi') || 'null');
 
 if(!data){
   data = {
-    headers:["53,1","110","172"],
-    sections:[
+    activeVehicle:0,
+    vehicles:[
       {
-        name:"Motor",
-        rows:[
-          {label:"Olje", values:["✔","","✔"]},
-          {label:"Filter", values:["✔","",""]}
-        ]
-      },
-      {
-        name:"Kontroll",
-        rows:[
-          {label:"Luft-filter", values:["","✔",""]}
+        name:"Volvo",
+        headers:["53,1","110","172"],
+        sections:[
+          {
+            name:"Motor",
+            rows:[
+              {label:"Olje", values:["✔","","✔"]},
+              {label:"Filter", values:["✔","",""]}
+            ]
+          }
         ]
       }
     ]
@@ -121,63 +143,141 @@ if(!data){
 }
 
 function save(){
-  localStorage.setItem('service_hybrid', JSON.stringify(data));
+  localStorage.setItem('service_multi', JSON.stringify(data));
   render();
 }
 
+function getV(){
+  return data.vehicles[data.activeVehicle];
+}
+
+// VEHICLES
+function setActive(i){
+  data.activeVehicle = i;
+  save();
+}
+
+function addVehicle(){
+  data.vehicles.push({
+    name:"Ny bil",
+    headers:["100","200","300"],
+    sections:[]
+  });
+  data.activeVehicle = data.vehicles.length - 1;
+  save();
+}
+
+function deleteVehicle(i){
+  data.vehicles.splice(i,1);
+  if(data.activeVehicle >= data.vehicles.length){
+    data.activeVehicle = 0;
+  }
+  save();
+}
+
+function renameVehicle(i,val){
+  data.vehicles[i].name = val;
+  save();
+}
+
+// HEADERS (KM/TIME)
+function addHeader(){
+  getV().headers.push("ny");
+  save();
+}
+
+function removeHeader(){
+  const v = getV();
+  v.headers.pop();
+  v.sections.forEach(s=>{
+    s.rows.forEach(r=>r.values.pop());
+  });
+  save();
+}
+
+function updateHeader(i,val){
+  getV().headers[i]=val;
+  save();
+}
+
+// SECTIONS
 function addSection(){
-  data.sections.push({name:"Ny seksjon", rows:[]});
+  getV().sections.push({name:"Ny seksjon", rows:[]});
   save();
 }
 
 function deleteSection(i){
-  data.sections.splice(i,1);
+  getV().sections.splice(i,1);
   save();
 }
 
+function updateSectionName(i,val){
+  getV().sections[i].name=val;
+  save();
+}
+
+// ROWS
 function addRow(s){
-  data.sections[s].rows.push({
+  const v=getV();
+  v.sections[s].rows.push({
     label:"Ny rad",
-    values:Array(data.headers.length).fill("")
+    values:Array(v.headers.length).fill("")
   });
   save();
 }
 
 function deleteRow(s,r){
-  data.sections[s].rows.splice(r,1);
-  save();
-}
-
-function updateSectionName(i,val){
-  data.sections[i].name = val;
-  save();
-}
-
-function updateHeader(i,val){
-  data.headers[i] = val;
+  getV().sections[s].rows.splice(r,1);
   save();
 }
 
 function updateRowLabel(s,r,val){
-  data.sections[s].rows[r].label = val;
+  getV().sections[s].rows[r].label=val;
   save();
 }
 
 function toggleCell(s,r,c){
-  let v = data.sections[s].rows[r].values[c];
-  data.sections[s].rows[r].values[c] = v === "✔" ? "" : "✔";
+  let v=getV().sections[s].rows[r].values[c];
+  getV().sections[s].rows[r].values[c]=v==="✔"?"":"✔";
   save();
 }
 
+// UI
+function renderVehicles(){
+  const bar=document.getElementById('vehicleBar');
+  bar.innerHTML='';
+
+  data.vehicles.forEach((v,i)=>{
+    bar.innerHTML+=`
+      <button class="${i===data.activeVehicle?'active':''}" onclick="setActive(${i})">
+        <input value="${v.name}" onchange="renameVehicle(${i},this.value)" style="width:80px">
+      </button>
+      <button class="smallbtn delete" onclick="deleteVehicle(${i})">X</button>
+    `;
+  });
+}
+
 function render(){
-  const app = document.getElementById('app');
-  app.innerHTML = '';
+  renderVehicles();
 
-  data.sections.forEach((sec,sIndex)=>{
+  const v=getV();
+  const app=document.getElementById('app');
+  app.innerHTML='';
 
-    const wrapper = document.createElement('div');
+  // header controls
+  const controls=document.createElement('div');
+  controls.innerHTML=`
+    <button onclick="addHeader()">+ KM/t</button>
+    <button onclick="removeHeader()">- KM/t</button>
+    <button onclick="addSection()">+ seksjon</button>
+  `;
+  app.appendChild(controls);
 
-    wrapper.innerHTML = `
+  v.sections.forEach((sec,sIndex)=>{
+
+    const wrapper=document.createElement('div');
+
+    wrapper.innerHTML=`
       <div class="section">
         <input value="${sec.name}" onchange="updateSectionName(${sIndex},this.value)">
         <div class="controls">
@@ -190,7 +290,7 @@ function render(){
         <table class="table">
           <tr>
             <th>Oppgave</th>
-            ${data.headers.map((h,i)=>`
+            ${v.headers.map((h,i)=>`
               <th contenteditable oninput="updateHeader(${i},this.innerText)">${h}</th>
             `).join('')}
           </tr>
@@ -200,20 +300,18 @@ function render(){
 
     app.appendChild(wrapper);
 
-    const table = wrapper.querySelector('table');
+    const table=wrapper.querySelector('table');
 
     sec.rows.forEach((row,rIndex)=>{
-      const tr = document.createElement('tr');
+      const tr=document.createElement('tr');
 
-      tr.innerHTML = `
+      tr.innerHTML=`
         <td class="row-label">
           <input value="${row.label}" onchange="updateRowLabel(${sIndex},${rIndex},this.value)">
           <button class="delete" onclick="deleteRow(${sIndex},${rIndex})">X</button>
         </td>
         ${row.values.map((v,cIndex)=>`
-          <td onclick="toggleCell(${sIndex},${rIndex},${cIndex})">
-            ${v}
-          </td>
+          <td onclick="toggleCell(${sIndex},${rIndex},${cIndex})">${v}</td>
         `).join('')}
       `;
 
