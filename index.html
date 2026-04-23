@@ -3,12 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Service Logg - Optimized Engine</title>
+<title>Service Logg - Optimized</title>
 
 <style>
 body{font-family:system-ui;background:#f5f5f5;padding:16px;}
 button{padding:8px;border:none;background:#111;color:#fff;margin:4px;cursor:pointer;border-radius:4px;}
 input{padding:6px;border:1px solid #ccc;border-radius:4px;}
+textarea{width:100%;min-height:60px;resize:vertical;}
 
 .vehicle{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;align-items:center;}
 .vehicle button.active{background:#1e88e5;}
@@ -19,7 +20,7 @@ input{padding:6px;border:1px solid #ccc;border-radius:4px;}
 .section input{background:transparent;border:none;color:#fff;font-weight:bold;font-size:16px;width:50%;}
 
 .table{width:100%;border-collapse:collapse;margin-top:6px;background:#fff;}
-.table th,.table td{border:1px solid #ddd;padding:6px;text-align:center;}
+.table th,.table td{border:1px solid #ddd;padding:6px;text-align:center;vertical-align:top;}
 .table th{background:#f57c00;color:#fff;}
 .rowlabel{text-align:left;background:#fafafa;}
 
@@ -28,6 +29,7 @@ input{padding:6px;border:1px solid #ccc;border-radius:4px;}
 
 .danger{background:red;}
 .small{padding:4px 6px;font-size:12px;}
+.noteCell{background:#fffde7;}
 
 </style>
 </head>
@@ -35,12 +37,14 @@ input{padding:6px;border:1px solid #ccc;border-radius:4px;}
 
 <h2>Service Logg (Optimized)</h2>
 
+<!-- VEHICLES TOP BUTTON -->
+<button onclick="addVehicle()">➕ Kjøretøy</button>
+
 <div class="vehicle" id="vehicleBar"></div>
-<button onclick="addVehicle()">➕ Ny bil</button>
 
 <div class="topbar">
-<button onclick="addHeader()">+ KM/t</button>
-<button onclick="removeHeader()">- KM/t</button>
+<button onclick="addHeader()">+ KM/timer</button>
+<button onclick="removeHeader()">- KM/timer</button>
 <button onclick="addSection()">+ seksjon</button>
 </div>
 
@@ -61,7 +65,8 @@ if(!state){
           {
             name:"Motor",
             rows:[
-              {label:"Olje",values:["✔","","✔"]}
+              {label:"Olje",values:["✔","","✔"]},
+              {label:"Annet",values:["","",""],note:true}
             ]
           }
         ]
@@ -78,7 +83,7 @@ function v(){return state.vehicles[state.activeVehicle];}
 
 // VEHICLES
 function addVehicle(){
-  state.vehicles.push({name:"Ny bil",headers:["100","200"],sections:[]});
+  state.vehicles.push({name:"Kjøretøy",headers:["",""],sections:[]});
   state.activeVehicle=state.vehicles.length-1;
   save();render();
 }
@@ -90,7 +95,7 @@ function deleteVehicle(i){state.vehicles.splice(i,1);if(state.activeVehicle>=sta
 // HEADERS
 function addHeader(){
   const veh=v();
-  veh.headers.push("ny");
+  veh.headers.push("");
   veh.sections.forEach(s=>s.rows.forEach(r=>r.values.push("")));
   save();render();
 }
@@ -105,27 +110,41 @@ function removeHeader(){
 function updateHeader(i,val){v().headers[i]=val;save();}
 
 // SECTIONS
-function addSection(){v().sections.push({name:"Ny seksjon",rows:[]});save();render();}
+function addSection(){
+  v().sections.push({name:"Ny seksjon",rows:[{label:"Annet",values:Array(v().headers.length).fill(""),note:true}]});
+  save();render();
+}
+
 function deleteSection(i){v().sections.splice(i,1);save();render();}
 function renameSection(i,val){v().sections[i].name=val;save();}
 
 // ROWS
-function addRow(s){v().sections[s].rows.push({label:"Ny rad",values:Array(v().headers.length).fill("")});save();render();}
+function addRow(s){
+  const sec=v().sections[s];
+  sec.rows.splice(sec.rows.length-1,0,{label:"Ny rad",values:Array(v().headers.length).fill("")});
+  save();render();
+}
+
 function deleteRow(s,r){v().sections[s].rows.splice(r,1);save();render();}
 function renameRow(s,r,val){v().sections[s].rows[r].label=val;save();}
 
-// CELL TOGGLE (NO FULL RENDER)
+// CELLS
 function toggleCell(s,r,c,el){
-  const cell=v().sections[s].rows[r].values[c];
-  const newVal=cell==="✔"?"":"✔";
-  v().sections[s].rows[r].values[c]=newVal;
+  const row=v().sections[s].rows[r];
+  const val=row.values[c];
+  const nv=val==="✔"?"":"✔";
+  row.values[c]=nv;
   save();
-
-  el.classList.toggle('checked',newVal==="✔");
-  el.textContent=newVal;
+  el.classList.toggle('checked',nv==="✔");
+  el.textContent=nv;
 }
 
-// RENDER VEHICLES
+function updateNote(s,r,c,val){
+  v().sections[s].rows[r].values[c]=val;
+  save();
+}
+
+// RENDER
 function renderVehicles(){
   const bar=document.getElementById('vehicleBar');
   bar.innerHTML="";
@@ -174,17 +193,17 @@ function render(){
     sec.rows.forEach((r,ri)=>{
       const tr=document.createElement('tr');
 
+      const isNote=r.note;
+
       tr.innerHTML=`
         <td class="rowlabel">
           <input value="${r.label}" onchange="renameRow(${si},${ri},this.value)">
-          <button class="danger small" onclick="deleteRow(${si},${ri})">X</button>
+          ${!isNote?`<button class="danger small" onclick="deleteRow(${si},${ri})">X</button>`:''}
         </td>
-        ${r.values.map((c,ci)=>`
-          <td class="cell ${c==='✔'?'checked':''}" 
-              onclick="toggleCell(${si},${ri},${ci},this)">
-            ${c}
-          </td>
-        `).join('')}
+        ${r.values.map((c,ci)=> isNote
+          ? `<td class="noteCell"><textarea oninput="updateNote(${si},${ri},${ci},this.value)">${c||''}</textarea></td>`
+          : `<td class="cell ${c==='✔'?'checked':''}" onclick="toggleCell(${si},${ri},${ci},this)">${c}</td>`
+        ).join('')}
       `;
 
       table.appendChild(tr);
@@ -197,4 +216,3 @@ render();
 </script>
 </body>
 </html>
-
