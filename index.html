@@ -19,10 +19,21 @@ textarea{width:100%;min-height:60px;resize:vertical;}
 .section{background:#1e88e5;color:#fff;padding:10px;margin-top:14px;display:flex;justify-content:space-between;align-items:center;border-radius:4px;}
 .section input{background:transparent;border:none;color:#fff;font-weight:bold;font-size:16px;width:50%;}
 
-.table{width:100%;border-collapse:collapse;margin-top:6px;background:#fff;}
-.table th,.table td{border:1px solid #ddd;padding:6px;text-align:center;vertical-align:top;}
+.table{width:100%;border-collapse:collapse;margin-top:6px;background:#fff;font-size:0.85em;}
+.table th,.table td{border:1px solid #ddd;padding:4px;text-align:center;vertical-align:top;}
 .table th{background:#f57c00;color:#fff;}
-.rowlabel{text-align:left;background:#fafafa;}
+
+.rowlabel{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:6px;
+  background:#fafafa;
+  text-align:left;
+}
+.rowlabel input{
+  flex:1;
+}
 
 .cell{cursor:pointer;user-select:none;}
 .cell.checked{background:#c8e6c9;font-weight:bold;}
@@ -37,7 +48,6 @@ textarea{width:100%;min-height:60px;resize:vertical;}
 
 <h2>Service Logg (Optimized)</h2>
 
-<!-- VEHICLES TOP BUTTON -->
 <button onclick="addVehicle()">➕ Kjøretøy</button>
 
 <div class="vehicle" id="vehicleBar"></div>
@@ -139,10 +149,7 @@ function toggleCell(s,r,c,el){
   el.textContent=nv;
 }
 
-function updateNote(s,r,c,val){
-  v().sections[s].rows[r].values[c]=val;
-  save();
-}
+function updateNote(s,r,c,val){v().sections[s].rows[r].values[c]=val;save();}
 
 // RENDER
 function renderVehicles(){
@@ -193,16 +200,14 @@ function render(){
     sec.rows.forEach((r,ri)=>{
       const tr=document.createElement('tr');
 
-      const isNote=r.note;
-
       tr.innerHTML=`
         <td class="rowlabel">
           <input value="${r.label}" onchange="renameRow(${si},${ri},this.value)">
-          ${!isNote?`<button class="danger small" onclick="deleteRow(${si},${ri})">X</button>`:''}
+          <button class="danger small" onclick="deleteRow(${si},${ri})">X</button>
         </td>
-        ${r.values.map((c,ci)=> isNote
-          ? `<td class="noteCell"><textarea oninput="updateNote(${si},${ri},${ci},this.value)">${c||''}</textarea></td>`
-          : `<td class="cell ${c==='✔'?'checked':''}" onclick="toggleCell(${si},${ri},${ci},this)">${c}</td>`
+        ${r.values.map((c,ci)=> isNaN(c)
+          ? `<td class="cell ${c==='✔'?'checked':''}" onclick="toggleCell(${si},${ri},${ci},this)">${c}</td>`
+          : `<td class="noteCell"><textarea oninput="updateNote(${si},${ri},${ci},this.value)">${c||''}</textarea></td>`
         ).join('')}
       `;
 
@@ -216,3 +221,4 @@ render();
 </script>
 </body>
 </html>
+
