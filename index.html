@@ -3,16 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Service Logg - State Engine</title>
+<title>Service Logg - Fixed Focus</title>
 
 <style>
 body{font-family:system-ui;background:#f5f5f5;padding:16px;}
 button{padding:8px;border:none;background:#111;color:#fff;margin:4px;cursor:pointer;border-radius:4px;}
 input{padding:6px;border:1px solid #ccc;border-radius:4px;}
 
-.topbar{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
-.vehicle{display:flex;gap:6px;align-items:center;margin-bottom:10px;flex-wrap:wrap;}
+.vehicle{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;align-items:center;}
 .vehicle button.active{background:#1e88e5;}
+
+.topbar{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
 
 .section{background:#1e88e5;color:#fff;padding:10px;margin-top:14px;display:flex;justify-content:space-between;align-items:center;border-radius:4px;}
 .section input{background:transparent;border:none;color:#fff;font-weight:bold;font-size:16px;width:50%;}
@@ -22,16 +23,15 @@ input{padding:6px;border:1px solid #ccc;border-radius:4px;}
 .table th{background:#f57c00;color:#fff;}
 .rowlabel{text-align:left;background:#fafafa;}
 
-.small{padding:4px 6px;font-size:12px;}
 .danger{background:red;}
 .ok{background:#4caf50;}
+.small{padding:4px 6px;font-size:12px;}
 
 </style>
 </head>
-
 <body>
 
-<h2>Service Logg (State Engine)</h2>
+<h2>Service Logg (Fixed Focus)</h2>
 
 <div class="vehicle" id="vehicleBar"></div>
 <button onclick="addVehicle()">➕ Ny bil</button>
@@ -56,16 +56,21 @@ if(!state){
         name:"Volvo",
         headers:["53,1","110","172"],
         sections:[
-          {name:"Motor",rows:[{label:"Olje",values:["✔","","✔"]}]}
+          {
+            name:"Motor",
+            rows:[
+              {label:"Olje",values:["✔","","✔"]}
+            ]
+          }
         ]
       }
     ]
   };
 }
 
+// SAVE (NO RENDER HERE)
 function save(){
   localStorage.setItem('service_state',JSON.stringify(state));
-  render();
 }
 
 function v(){return state.vehicles[state.activeVehicle];}
@@ -75,45 +80,64 @@ function addVehicle(){
   state.vehicles.push({name:"Ny bil",headers:["100","200"],sections:[]});
   state.activeVehicle=state.vehicles.length-1;
   save();
+  render();
 }
 
-function setVehicle(i){state.activeVehicle=i;save();}
+function setVehicle(i){state.activeVehicle=i;save();render();}
 
 function renameVehicle(i,val){state.vehicles[i].name=val;save();}
 
 function deleteVehicle(i){
   state.vehicles.splice(i,1);
   if(state.activeVehicle>=state.vehicles.length)state.activeVehicle=0;
+  save();render();
+}
+
+// HEADERS (NO LIVE RERENDER)
+function addHeader(){
+  v().headers.push("ny");
+  v().sections.forEach(s=>s.rows.forEach(r=>r.values.push("")));
+  save();render();
+}
+
+function removeHeader(){
+  v().headers.pop();
+  v().sections.forEach(s=>s.rows.forEach(r=>r.values.pop()));
+  save();render();
+}
+
+function updateHeader(i,val){
+  v().headers[i]=val;
   save();
 }
 
-// HEADERS
-function addHeader(){v().headers.push("ny");v().sections.forEach(s=>s.rows.forEach(r=>r.values.push("")));save();}
-function removeHeader(){v().headers.pop();v().sections.forEach(s=>s.rows.forEach(r=>r.values.pop()));save();}
-function updateHeader(i,val){v().headers[i]=val;save();}
-
 // SECTIONS
-function addSection(){v().sections.push({name:"Ny seksjon",rows:[]});save();}
-function deleteSection(i){v().sections.splice(i,1);save();}
+function addSection(){v().sections.push({name:"Ny seksjon",rows:[]});save();render();}
+function deleteSection(i){v().sections.splice(i,1);save();render();}
 function renameSection(i,val){v().sections[i].name=val;save();}
 
 // ROWS
-function addRow(s){v().sections[s].rows.push({label:"Ny rad",values:Array(v().headers.length).fill("")});save();}
-function deleteRow(s,r){v().sections[s].rows.splice(r,1);save();}
+function addRow(s){v().sections[s].rows.push({label:"Ny rad",values:Array(v().headers.length).fill("")});save();render();}
+function deleteRow(s,r){v().sections[s].rows.splice(r,1);save();render();}
 function renameRow(s,r,val){v().sections[s].rows[r].label=val;save();}
 
-// CELLS
-function toggleCell(s,r,c){let cell=v().sections[s].rows[r].values[c];v().sections[s].rows[r].values[c]=cell==="✔"?"":"✔";save();}
+// CELLS (NO RERENDER)
+function toggleCell(s,r,c){
+  let cell=v().sections[s].rows[r].values[c];
+  v().sections[s].rows[r].values[c]=cell==="✔"?"":"✔";
+  save();
+}
 
 // RENDER
 function renderVehicles(){
   const bar=document.getElementById('vehicleBar');
   bar.innerHTML="";
+
   state.vehicles.forEach((x,i)=>{
     bar.innerHTML+=`
       <button class="${i===state.activeVehicle?'active':''}" onclick="setVehicle(${i})">${x.name}</button>
       <input value="${x.name}" onchange="renameVehicle(${i},this.value)">
-      <button class="small danger" onclick="deleteVehicle(${i})">X</button>
+      <button class="danger small" onclick="deleteVehicle(${i})">X</button>
     `;
   });
 }
